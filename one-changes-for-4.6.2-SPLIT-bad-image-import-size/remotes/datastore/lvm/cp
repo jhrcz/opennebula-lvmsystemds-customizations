@@ -119,7 +119,7 @@ esac
 
 ssh_exec_and_log "$DST_HOST" "$REGISTER_CMD" "Error registering $DST_HOST:$DEV"
 
-exec_and_log "eval $DUMP | $SSH $DST_HOST $SUDO $DD of=$DEV bs=64k" \
+exec_and_log "eval $DUMP | $SSH $DST_HOST $SUDO $DD of=$DEV bs=16M" \
     "Error dumping $SRC to $DST_HOST:$DEV"
 
 echo "$LVM_SOURCE"
