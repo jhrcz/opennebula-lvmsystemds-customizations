@@ -72,15 +72,8 @@ CLONE_CMD=$(cat <<EOF
     mkdir -p $DST_DIR
     SIZE=\$($SUDO $LVS $DEV --noheadings --nosuffix --units m -o lv_size \
             | tr -d ' ')
-
-    if [ -r /dev/${VG_NAME}/pool-${LV_NAME} ]
-    then
-	$SUDO $LVRENAME "${VG_NAME}" "pool-${LV_NAME}" "$LV_CLONE"
-    else
-    	$SUDO $LVCREATE -L\${SIZE}M -n $LV_CLONE $VG_NAME
-    	$SUDO $DD if=$TARGET_DEV of=$LV_CLONE_DEV bs=16M
-    fi
-
+    $SUDO $LVCREATE -L\${SIZE}M -n $LV_CLONE $VG_NAME
+    $SUDO $DD if=$TARGET_DEV of=$LV_CLONE_DEV bs=64k
     ln -s "$LV_CLONE_DEV" "$DST_PATH"
 EOF
 )
