@@ -21,7 +21,7 @@ def print_info(name, value)
     puts "#{name}=#{value}"
 end
 
-cpu_overcommit_multiplier = 4
+cpu_overcommit_multiplier = 3
 mem_overcommit_multiplier = 1
 
 ######
