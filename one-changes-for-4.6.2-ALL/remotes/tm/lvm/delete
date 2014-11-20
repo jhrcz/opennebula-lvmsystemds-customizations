@@ -51,9 +51,9 @@ DELETE_CMD=$(cat <<EOF
     # lv-one-<image>                 ==> persistent
     # lv-one-<image>-<vmid>-<diskid> ==> non-persistent (clone)
 
-    VMID=\$(echo \$LV_NAME|cut -d- -f4)
-    DISKID=\$(echo \$LV_NAME|cut -d- -f5)
 
+    VMID=\$(   echo \$LV_NAME|cut -d- -f4)
+    DISKID=\$( echo \$LV_NAME|cut -d- -f5)
     if [ -n "\$VMID" -a -n "\$DISKID" ]; then
         # this is a cloned image
         $SUDO $LVREMOVE -f \$DEV
