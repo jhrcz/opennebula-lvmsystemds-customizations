@@ -50,13 +50,25 @@ DELETE_CMD=$(cat <<EOF
     # The following attrs will only be there if the image is non-persistent
     # lv-one-<image>                 ==> persistent
     # lv-one-<image>-<vmid>-<diskid> ==> non-persistent (clone)
+    # lv-one-<vmid>-<diskid>         ==> non-persistent (ephemeral / on the fly)
 
+    # non-persistent - clone
     VMID=\$(echo \$LV_NAME|cut -d- -f4)
     DISKID=\$(echo \$LV_NAME|cut -d- -f5)
 
     if [ -n "\$VMID" -a -n "\$DISKID" ]; then
         # this is a cloned image
         $SUDO $LVREMOVE -f \$DEV
+        exit 0
+    fi
+
+    # non-persistent - ephemeral
+    VMID=\$(   echo \$LV_NAME|cut -d- -f3)
+    DISKID=\$( echo \$LV_NAME|cut -d- -f4)
+    SUFFIX=\$( echo \$LV_NAME|cut -d- -f5)
+    if [ -n "\$VMID" -a -n "\$DISKID" -a -z "\$SUFFIX" ]; then
+        $SUDO $LVREMOVE -f \$DEV
+        exit 0
     fi
 EOF
 )
