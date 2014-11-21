@@ -21,6 +21,9 @@ def print_info(name, value)
     puts "#{name}=#{value}"
 end
 
+cpu_overcommit_multiplier = 4
+mem_overcommit_multiplier = 1
+
 ######
 #  First, get all the posible info out of virsh
 #  TODO : use virsh freecell when available
@@ -31,11 +34,11 @@ exit(-1) if $?.exitstatus != 0
 
 nodeinfo_text.split(/\n/).each{|line|
     if     line.match('^CPU\(s\)')
-        $total_cpu   = line.split(":")[1].strip.to_i * 100
+        $total_cpu   = line.split(":")[1].strip.to_i * 100 * cpu_overcommit_multiplier.to_i
     elsif  line.match('^CPU frequency')
         $cpu_speed   = line.split(":")[1].strip.split(" ")[0]
     elsif  line.match('^Memory size')
-        $total_memory = line.split(":")[1].strip.split(" ")[0]
+        $total_memory = line.split(":")[1].strip.split(" ")[0].strip.to_i * mem_overcommit_multiplier.to_i
     end
 }
 
@@ -65,7 +68,7 @@ top_text.split(/\n/).each{|line|
     end
 }
 
-$total_memory = `free -k|grep "Mem:" | awk '{print $2}'`
+#$total_memory = `free -k|grep "Mem:" | awk '{print $2}'`
 tmp=`free -k|grep "buffers\/cache"|awk '{print $3 " " $4}'`.split
 
 $used_memory=tmp[0]
