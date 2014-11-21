@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # -------------------------------------------------------------------------- #
-# Copyright 2002-2013, OpenNebula Project (OpenNebula.org), C12G Labs        #
+# Copyright 2002-2014, OpenNebula Project (OpenNebula.org), C12G Labs        #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -16,22 +16,16 @@
 # limitations under the License.                                             #
 #--------------------------------------------------------------------------- #
 
-# mkimage size format host:remote_system_ds/disk.i vmid dsid
-#   - size in MB of the image
-#   - format for the image
+# clone fe:SOURCE host:remote_system_ds/disk.i size
+#   - fe is the front-end hostname
+#   - SOURCE is the path of the disk image in the form DS_BASE_PATH/disk
 #   - host is the target host to deploy the VM
 #   - remote_system_ds is the path for the system datastore in the host
-#   - vmid is the id of the VM
-#   - dsid is the target datastore (0 is the system datastore)
 
-echo " $@ " >> /onetmp.log
-
-SIZE=$1
-FSTYPE=$2
-DST=$3
-
-VMID=$4
-DSID=$5
+SRC=$1
+DST=$2
+VM_ID=$3
+DS_ID=$4
 
 if [ -z "${ONE_LOCATION}" ]; then
     TMCOMMON=/var/lib/one/remotes/tm/tm_common.sh
@@ -39,52 +33,52 @@ else
     TMCOMMON=$ONE_LOCATION/var/remotes/tm/tm_common.sh
 fi
 
-. $TMCOMMON
+DRIVER_PATH=$(dirname $0)
 
-log " $@ "
+source $TMCOMMON
+source ${DRIVER_PATH}/../../datastore/lvm/lvm.conf
 
 #-------------------------------------------------------------------------------
 # Set dst path and dir
 #-------------------------------------------------------------------------------
+
+SRC_HOST=`arg_host $SRC`
+SRC_PATH=`arg_path $SRC`
+
 DST_PATH=`arg_path $DST`
 DST_HOST=`arg_host $DST`
 DST_DIR=`dirname $DST_PATH`
 
 #-------------------------------------------------------------------------------
-# Make the new image (file-based)
+# Get other LVM related fields
 #-------------------------------------------------------------------------------
-case "$FSTYPE" in
-    "vmdk_"*)
-		ssh_make_path $DST_HOST $DST_PATH
-		CREATE_IMAGE=""
-        ;;
-    *)
-		ssh_make_path $DST_HOST $DST_DIR
-		CREATE_IMAGE="$DD if=/dev/zero of=$DST_PATH bs=1 count=1 seek=${SIZE}M"
-        ;;
-esac
 
-#VG_NAME=$(echo $DST_PATH|cut -d. -f1)
-DRIVER_PATH=$(dirname $0)
-source ${DRIVER_PATH}/../../datastore/lvm/lvm.conf
-#LV_NAME=$(echo $DST_PATH|cut -d. -f2)
-VMVOLID="${DST##*/disk.}"
-LV_NAME="lv-one-${VMID}-${VMVOLID}"
-if ! echo "$FSTYPE"|grep -q ^vmdk; then
-  #CREATE_IMAGE="$DD if=/dev/zero of=$DST_PATH bs=1 count=1 seek=${SIZE}M"
-  CREATE_IMAGE="$SUDO $LVCREATE -L${SIZE}M ${VG_NAME} -n ${LV_NAME}"
-fi
- 
-MKSCRIPT=$(cat <<EOF
-export PATH=/usr/sbin:/sbin:\$PATH
-$CREATE_IMAGE
-$MKFS_CMD
-ln -s /dev/$VG_NAME/$LV_NAME $DST_PATH
+LV_NAME=`echo $SRC_PATH|cut -d. -f2`
+VG_NAME=`echo $SRC_PATH|cut -d. -f1`
+DEV="/dev/${VG_NAME}/${LV_NAME}"
+
+DISK_ID=$(echo $DST_PATH|awk -F. '{print $NF}')
+
+TARGET_DEV="/dev/$VG_NAME/$LV_NAME"
+LV_CLONE="$LV_NAME-$VM_ID-$DISK_ID"
+LV_CLONE_DEV="/dev/$VG_NAME/$LV_CLONE"
+
+#-------------------------------------------------------------------------------
+# Create the snapshot and link it
+#-------------------------------------------------------------------------------
+
+CLONE_CMD=$(cat <<EOF
+    set -e
+    mkdir -p $DST_DIR
+    SIZE=\$($SUDO $LVS $DEV --noheadings --nosuffix --units m -o lv_size \
+            | tr -d ' ')
+    $SUDO $LVCREATE -L\${SIZE}M -n $LV_CLONE $VG_NAME
+    $SUDO $DD if=$TARGET_DEV of=$LV_CLONE_DEV bs=64k
+    rm -f "$DST_PATH"
+    ln -s "$LV_CLONE_DEV" "$DST_PATH"
 EOF
 )
 
-log "Making filesystem of ${SIZE}M and type $FSTYPE at $DST"
-
-ssh_exec_and_log $DST_HOST "$MKSCRIPT" "Could not create image $DST_PATH"
-
+ssh_exec_and_log "$DST_HOST" "$CLONE_CMD" \
+        "Error cloning $TARGET_DEV to $LV_CLONE_DEV"
 exit 0
