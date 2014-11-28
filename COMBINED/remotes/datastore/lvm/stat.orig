@@ -46,34 +46,15 @@ unset i XPATH_ELEMENTS
 
 while IFS= read -r -d '' element; do
     XPATH_ELEMENTS[i++]="$element"
-done < <($XPATH /DS_DRIVER_ACTION_DATA/IMAGE/PATH \
-                /DS_DRIVER_ACTION_DATA/DATASTORE/TEMPLATE/BRIDGE_LIST)
+done < <($XPATH /DS_DRIVER_ACTION_DATA/IMAGE/PATH)
 
 SRC="${XPATH_ELEMENTS[0]}"
-BRIDGE_LIST="${XPATH_ELEMENTS[1]}"
 
 # ------------------------------------------------------------------------------
 #  Compute the size
 # ------------------------------------------------------------------------------
 
 SIZE=`fs_size $SRC`
-
-# fix to allow import from storage on compute nodes
-STAT_CMD=$(cat <<EOF
-SCRIPTS_REMOTE_DIR="/var/tmp/one"
-source \${SCRIPTS_REMOTE_DIR}/datastore/libfs.sh
-fs_size $SRC
-EOF
-)
-if [ "$SIZE" = "0" ]; then
-    DST_HOST=`get_destination_host $ID`
-    if [ -z "$DST_HOST" ]; then
-	error_message "Datastore template missing 'BRIDGE_LIST' attribute."
-	exit -1
-    fi
-    SIZE=$(ssh_monitor_and_log "$DST_HOST" "$STAT_CMD" \
-   	"Error getting remote file size")
-fi
 
 if [ "$SIZE" = "0" ]; then
     log_error "Cannot determine size for $SRC"
