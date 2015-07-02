@@ -22,7 +22,14 @@ source $(dirname $0)/../../scripts_common.sh
 domain=$1
 
 mkdir -p `dirname $domain`
+# possibility to test changes in vm xml definition when machine is in poweroff state
+# requires pre-boot file copy next id
+if [ -f "$domain" ]
+then
+cat > $domain.tmp
+else
 cat > $domain
+fi
 
 # be safe and keep older acpabilities for migration betwen upgraded
 # and not yet upgdared hypervizor servers
