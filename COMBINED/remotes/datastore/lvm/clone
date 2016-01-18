@@ -68,7 +68,8 @@ SAFE_DIRS=""
 SRC_HOST=`echo $SRC|cut -d: -f1`
 SRC_PATH=`echo $SRC|awk -F. '{print $NF}'`
 LV_SRC=$(echo $SRC_PATH|cut -d. -f2)
-DEV_SRC="/dev/$VG_NAME/$LV_SRC"
+VG_SRC=$(echo $SRC | cut -d: -f2 | cut -d. -f1)
+DEV_SRC="/dev/$VG_SRC/$LV_SRC"
 
 set_up_datastore "$BASE_PATH" "$RESTRICTED_DIRS" "$SAFE_DIRS"
 
